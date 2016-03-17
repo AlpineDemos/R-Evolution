@@ -1,0 +1,7 @@
+a:      mov     ra,0
+        mov     rs,1
+        setdir
+        scanv   r1,r2,r3
+        mov     ca,0
+        firev   001
+        jmp a

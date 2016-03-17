@@ -1,0 +1,448 @@
+
+           1. Grundgedanken
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+    Auf  einem  Spielfeld  befinden  sich X Roboter, deren Handlungen durch je
+  einen   eigenen   DNA-Code   gesteuert   werden.   Sie   bewegen   sich  mit
+  ver„nderbaren  Geschwindigkeiten  und  Richtungen  im Spielfeld. Dabei macht
+  jeder  Roboter  Jagd  auf  die  anderen, indem er Viren, die seinen DNA-Code
+  enthalten,   abfeuert.   Die   Viren   werden   zwar   vorerst   durch   ein
+  Schutzschild,  das  jeder  Roboter  besitzt, vernichtet, greifen aber dieses
+  Schild   an.   Ist   das   Schutzschild   "aufgebraucht",   kann  ein  Virus
+  ungehindert  in  den  Roboter eindringen und dessen DNA-Code mit dem eigenen
+  berschreiben  (  DNA-Copy  ).  Auf  diese  Weise vermehren sich die Roboter
+  auf   Kosten   anderer,   sodaá  die  Anzahl  der  sich  auf  dem  Spielfeld
+  befindlichen Roboter immer gleich bleibt.
+
+    Bei  einem  DNA-Copy  passieren  in gewissen Abst„nden kleine Fehler, d.h.
+  der  DNA-Code  wird  nicht  richtig  kopiert,  es  werden per Zufall Befehle
+  weggelassen,   hinzugefgt   oder  manipuliert.  Dadurch  wird  der  Roboter
+  entweder  schw„cher  (  besch„digt  ),  kann  also  leichter von den brigen
+  Robotern  "erbeutet"  werden,  oder  besser,  in  diesem  Fall  wird er sich
+  schneller  durchsetzen  k”nnen,  sodaá sich die  Verbesserung  des DNA-Codes
+  schnell ber s„mtliche Roboter ausgebreitet hat.
+
+    Die  Roboter  sind  Viren  natrlich  nicht  wehrlos ausgesetzt. Neben der
+  M”glichkeit,  auszuweichen,  k”nnen  sie  auch  Antik”rper abfeuern, die die
+  Viren  neutralisieren:  Wenn  ein  Antik”rper einen Virus trifft, vernichten
+  sie  sich  gegenseitig.
+
+    Um  sein  Umfeld  untersuchen  zu  k”nnen,  besitzt  jeder  Roboter  einen
+  Scanner,  dem  er  den  Winkel  mitteilt,  in  dem  er  das  Spielfeld  nach
+  Robotern  oder  Viren  untersuchen  will.  Der  Scanner teilt ihm die Anzahl
+  der  in  diesem  Winkel  liegenden  Roboter  oder Viren mit. Allerdings kann
+  der  Scanner  nicht  unendlich  weit  sehen, der Roboter kann also immer nur
+  seine n„here Umgebung analysieren.
+
+    Mit  einer  Kanone  kann  jeder  Roboter Viren bzw. Antik”rper abzufeuern,
+  deren  Flugwinkel  unabh„ngig  von  Scanner- und Bewegungswinkel einstellbar
+  ist.  Um  sinnloses  "Herumfeuern"  zu  vermeiden,  ist die Anzahl der Viren
+  und  Antik”rper,  die  sich  pro  Roboter  gleichzeitig  auf  dem  Spielfeld
+  befinden  k”nnen,  eingeschr„nkt,  der  n„chste  Virus  kann  nur abgefeuert
+  werden,  wenn  ein  Virus  oder  Antik”rper das Spielfeld verlassen hat oder
+  vernichtet worden ist.
+
+
+  2. Umsetzung in Assembler
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+    Das  Programm  ben”tigt  sehr  oft  Winkel.  Zur leichteren Handhabung ist
+  es   von  Vorteil,  wenn  der  Winkel  immer  im  Bereich  von  0-255  liegt
+  ( siehe REGISTER-/DNA-BLOCK )   Deshalb   haben   wir   eine   neue  Einheit
+  definiert: <øR>. 360ø sind 256øR. Es gilt:
+
+                     256øR                           ø
+        øREv = Xø * ÄÄÄÄÄÄÄÄ ;  Xø = øREv * 1.40625 ÄÄÄÄ
+                     360ø                            øR
+
+  Jeder  Winkel  ist  absolut,  d.h.  unabh„ngig  von Richtung und Sichtwinkel
+  der  Roboter  bzw.  Viren.  Die  Winkel  sind  an  die Bildschirmkoordinaten
+  angepaát:   Da   die   Bildschirmkoordinaten  nach unten gr”áer werden, wird
+  auch der Winkel im Uhrzeigersinn erh”ht. ( Siehe Anhang 2 )
+
+
+    Auch  die  Geschwindigkeiten  haben  wir  neu definiert: 0 bedeutet Objekt
+  steht,  1  ist  die  H™CHSTE  und  255  die  NIEDRIGSTE Geschwindigkeit. Wir
+  haben  diese  Anordnung  gew„hlt, weil Geschwindigkeiten fast nur in Formeln
+  wie
+           A = COS ( B ) DIV Geschwindigkeit   ( siehe 3. )
+
+  ben”tigt   werden,   sodaá   A  dann  groá  ist,  wenn  der  Zahlenwert  der
+  Geschwindigkeit klein ist.
+
+    Da  fr  Roboter  und  Viren  sehr viele Rechenoperationen n”tig sind, ist
+  Assembler    die    fr    R-Evolution    einzige    in    Frage    kommende
+  Programmiersprache.  Zus„tzlich  sind  die ben”tigten Variablen so plaziert,
+  daá  m”glichst  schnell  und  mit  wenig  Aufwand auf sie zugegriffen werden
+  kann.  Wir  haben  zusammengeh”rigen  Variablen  in  2^N  Byte  groáe Bl”cke
+  gruppiert,   man   kann   diese   Bl”cke  schnell  und  einfach  durch  SHLs
+  addressieren.   Der   enorme   Speicherverbrauch  der  ben”tigten  Variablen
+  erzwingt eine Auslagerung in den Extended Memory.
+
+  ROBOT-BLOCK:                             ( Blockgr”áe pro Robot: 16 Byte )
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    ÚÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+    ³ +00: ³ X-Position ( 1 Word Vorkomma-, 1 Word Nachkomma-Anteil ) ³
+    ³ +04: ³ Y-Position ( 1 Word Vorkomma-, 1 Word Nachkomma-Anteil ) ³
+    ³ +08: ³ SV: Virus-Status: Anzahl der Viren, die noch abgefeuert  ³
+    ³      ³                   werden drfen.                         ³
+    ³ +09: ³ SD: Defense-Status: Zustand des Schutzschildes           ³
+    ³ +10: ³ INCX: INC-Faktor fr X-Position                          ³
+    ³ +12: ³ INCY: INC-Faktor fr Y-Position                          ³
+    ³ +14: ³ INC-Flags: Bit 0 = Vorzeichen von INCX                   ³
+    ³      ³            Bit 1 = Vorzeichen von INCY                   ³
+    ³ +15: ³ COLOR: Farbe des Robots                                  ³
+    ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+      Um  nicht  bei  jeder  Bewegung  eines  Roboters  seine Bewegung in X-
+    und   Y-Richtung   neu  berechnen  zu  mssen,  haben  wir  INC-Faktoren
+    eingefhrt,  die  einfach  zu  der  X-  bzw.  zu  der Y-Position addiert
+    werden.  Die  INC-Faktoren  sind  1  Word groá, dieses Word ist aber der
+    Nachkomma-Anteil  des  INC-Faktors.  Das  liegt  daran,  daá ein Roboter
+    bei  h”chster  Geschwindigkeit  genau  um  1  verschoben  wird, um nicht
+    Pixel  ( und  damit  etwaige  Viren )  zu berspringen. Deshalb hat auch
+    die   X-   und   Y-Position   jedes   Roboters  ein  Vorkomma-  und  ein
+    Nachkomma-Word.  Ein  INC-Faktor  kann auch negativ sein, da er aber nur
+    aus   einem   Nachkomma-Anteil   besteht,   muá   das   Vorzeichen   des
+    INC-Faktors in ein eigenes Byte untergebracht werden.
+
+      SV  beinhaltet  die  Anzahl  der  Viren,  die  noch  abgefeuert werden
+    drfen.  Pro  Roboter  drfen sich maximal 16 Viren gleichzeitig auf dem
+    Spielfeld  aufhalten.  Verl„át  ein  Virus  das  Spielfeld  oder wird es
+    vernichtet, wird SV entsprechend um 1 erh”ht.
+
+      SD  zeigt  den  Zustand  des  Schutzschildes an. Bei voll aufgeladenem
+    Schild  ist  SD=255,  bei  vollkommen  zerst”rtem  Schild dagegen 0. Das
+    "Opfer"  eines  DNA-Copys  erh„lt  wieder  den  Ausgangszustand  SD=255.
+    šberspielt  ein  Roboter  seinen  Code  auf  einen  anderen, erh”ht sich
+    sein  Schutzschild  ein  wenig.  Dadurch  ist  gew„hrleistet,  daá jeder
+    Roboter nach einem DNA-Copy strebt.
+
+      Die  Farbe  des  Roboters  ist nur fr Vergleichszwecke eingebaut. Sie
+    wird  bei  einem  DNA-Copy  mitkopiert.  Wenn man z.B. vergleichen will,
+    welcher    von    2    DNA-Codes    sich    besser    durch   Mutationen
+    weiterentwickelt,  l„dt  man  in die einen Robots den einen DNA-Code mit
+    einem  bestimmten  Farbwert,  und  in  die  anderen den anderen Code mit
+    einem  anderen  Farbwert.  Dann l„át man R-Evolution einige Zeit laufen.
+    Der  Code,  dessen  Farbe  die  meisten  Roboter tragen, hat eignet sich
+    besser.  Man  kann  auch  die  Effektivit„t  eines  DNA-Codes  durch das
+    Farbbyte    bestimmen:    In    einem  speziellen  Battle-Mode  wird die
+    Mutations-Routine   deaktiviert,  sodaá  jeder  DNA-Code  ohne  "Fehler"
+    kopiert  wird.  Nach  einiger  Zeit  haben  die Mehrzahl der Roboter den
+    selbe Farbe und den praxistauglicheren DNA-Code.
+
+    Die  ROBOT-BLOCKs  der  einzelnen  Roboter  liegen direkt hintereinander
+    und   erm”glichen  so  der  Routine,  die  die  Bewegungen  der  Roboter
+    steuert,   (  PROC  MOVEvolution  )  einen  schnellen  Zugriff  auf  die
+    ben”tigten Variablen.
+
+  VIRUS-BLOCK:       ( Blockgr”áe pro Robot: 16 Viren * 16 Byte = 256 Byte )
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    ÚÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+    ³ +00: ³ X-Position ( 1 Word Vorkomma-, 1 Word Nachkomma-Anteil ) ³
+    ³ +04: ³ Y-Position ( 1 Word Vorkomma-, 1 Word Nachkomma-Anteil ) ³
+    ³ +08: ³ ANGLE: Winkel, in dem der Virus abgefeuert worden ist.   ³
+    ³ +09: ³ SPEED: Geschwindigkeit des Virus                         ³
+    ³ +10: ³ INCX: INC-Faktor fr X-Position                          ³
+    ³ +12: ³ INCY: INC-Faktor fr Y-Position                          ³
+    ³ +14: ³ INC-Flags: Bit 0 = Vorzeichen von INCX                   ³
+    ³      ³            Bit 1 = Vorzeichen von INCY                   ³
+    ³ +15: ³ ID-Byte: 0=Virus / 1=Antik”rper                          ³
+    ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+      Jeder  Virus  (  pro  Robot  16  Stck ) ben”tigt einen Virusblock von
+    16  Byte.  Der  Robot  kann nur beim Abfeuern Winkel und Geschwindigkeit
+    des  Virus  bestimmen,  eine "Kurskorrektur" ist nicht mehr m”glich. Ein
+    Virus   MUSS  immer  eine  Geschwindigkeit  gr”áer  als  0  haben,  eine
+    Geschwindigkeit=0  zeigt  einen  noch  deaktivierten  Virus an. Auch bei
+    Viren  werden  INC-Faktoren  eingesetzt,  die  nur  einmal beim Abfeuern
+    berechnet  werden  mssen.  Neu beim VIRUS-BLOCK ist das ID-Byte. Ist es
+    1,  ist  das  Objekt  ein  Antik”rper,  ansonsten  ein  Virus. Antik”rper
+    werden von R-Evolution wie spezielle Viren behandelt.
+
+    Der  VIRUS-BLOCK  wiederholt  sich  16mal  pro  Robot,  auch hier liegen
+    die VIRUS-BLOCKs aller Robots  hintereinander im Speicher.
+
+
+  REGISTER-/DNA-BLOCK:                    ( Blockgr”áe pro Robot: 512 Byte )
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    ÚÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+    ³ +00: ³ IP: Instruction-Pointer: Befehlszeiger.                  ³
+    ³ +01: ³ R1-R9: Register, die dem Roboter zur freien Verfgung    ³
+    ³      ³        stehen.                                           ³
+    ³ +10: ³ EA: Eye-Angle: Winkel, in dem der Scanner das Spielfeld  ³
+    ³      ³                absucht.                                  ³
+    ³ +11: ³ CA: Cannon-Angle: Winkel, in dem Viren abgefeuert werden.³
+    ³ +12: ³ RS: Robot-Speed: Geschwindigkeit des Roboters.           ³
+    ³ +13: ³ RA: Robot-Angle: Winkel, in dem der Robot sich bewegt.   ³
+    ³ +14: ³ CF: Carry-Flag: Wird bei bedingten Sprnge verwendet.    ³
+    ³ +15: ³ ZF: Zero-Flag: Wird bei bedingten Sprnge verwendet.     ³
+    ³ +16: ³ Ab hier f„ngt der eigentliche DNA-Code an.               ³
+    ÀÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+    Jeder   DNA-Code  hat  16  Register  zu  Verfgung,  von  denen  7  eine
+    bestimmte  Funktion  zugeordnet  ist:
+
+    - IP  ist der  Befehlszeiger.  Jeder Befehl ist 2 Byte lang ( siehe 3. )
+      Da  der  IP  nicht  die  tats„chliche  Position  sondern  die  Befehle
+      z„hlt,  kann  der  gesamte  DNA-Code mit 8 Bit addressiert werden. Die
+      16  Byte  der  Register liegen im selben Addressraum, sodaá der IP nie
+      kleiner als 8 werden darf.
+    - EA  enth„lt  den  Sichtwinkel  fr  SCAN  (  siehe  3.  ) Da das ganze
+      Programm in øR z„hlt, reichen auch hier 8 Bit fr 360ø aus.
+    - In CA befindet sich der Winkel, in dem ein Virus abgefeuert wird.
+    - RS   ist   die  Geschwindigkeit  des  Roboters.  Es  wird  von  SETDIR
+      ( Richtungs„nderung, siehe 3. ) verwendet.
+    - RA  ist  der  Winkel,  in  dem  der  Roboter sich bewegt. Auch RA wird
+      von SETDIR ben”tigt.
+    - CF  und  ZF  sind  Flags,  wie  sie  von  Assembler  bekannt sind. Die
+      meisten  Befehle  setzen  diese  Flags  nach dem Wert des Ergebnisses.
+      CF/ZF erm”glichen bedingte Sprnge.
+
+      Der  eigentliche  DNA-Code  beginnt  an  Position  16.  Da  der  ganze
+    Block  eine  Gr”áe  von  512  Byte  hat,  stehen  dem  Code 496 Byte zur
+    Verfgung.  Bei  2  Byte  pro  Befehl  besteht  der  Code  also  aus 248
+    Befehlen. ( Siehe Anhang 1: Auflistung der Befehle )
+
+
+         3. Der Interpreter
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+    Um  die  Befehle  des  Robot-DNA-Codes  ausfhren  zu  k”nnen,  haben  wir
+  einen  Interpreter  geschrieben.  Er  fhrt alle Registermanipulationen aus,
+  berwacht,   ob  eine  unerlaubte  Registermanipulation  vorliegt  und  ruft
+  neben   den   Standard-Assembler-Operationen  die  erweiterten  Befehle  zur
+  Steuerung  von  Robot,  Scanner und Kanone auf. An dieser Stelle m”chten wir
+  diejenigen  Befehle  n„her erl„utern, die nicht oder in dieser Form nicht in
+  dem Befehlsschatz des Prozessors vorkommen:
+
+  1. ADD IP, X / SUB IP, X
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    Neben  den  Befehlen  < MOV  IP,  X > bzw. < JMP X > ,  der absoluten JMPs
+  gleichkommt,   gibt   es  die  M”glichkeit  eines  relativen  JMPs  mit  den
+  Befehlen < ADD/SUB IP, X >. Auch hier gilt natrlich, daá der IP nie kleiner
+  als 0 werden darf.
+
+  2. FIREA / FIREV
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    FIRE  feuert  ein  Virus  bzw.  einen  Antik”rper  mit der ihm bergebenen
+  Geschwindigkeit  (  Konstante  oder  Register  ) ab. Es berprft zuerst, ob
+  SV>0  ist,  also  noch ein Virus abgefeuert werden darf. Dann sucht es einen
+  freien  der  insgesamt  16  VIRUS-BLOCKs,  indem es nach einem Virus mit der
+  Geschwindigkeit  0  sucht.  Ist  ein solcher Block gefunden, werden zun„chst
+  die  X-/Y-Koordinaten  des  Virus  auf  die  des  Roboters  gesetzt  und die
+  INC-Faktoren mit <CA> berechnet:
+                           INCX = COS(CA) DIV SPEED
+                           INCY = SIN(CA) DIV SPEED
+  Zuletzt  wird  noch  das  ID-Byte  je  nach  FIREA  oder  FIREV  gesetzt und
+  Winkel und Geschwindigkeit ( >0! ) eingetragen.
+
+  3. GETSV / GETSD
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    Weil  SV  und  SD  nicht beschrieben werden drfen, durften sie auch nicht
+  als  Register  in  den  REGISTER-/DNA-BLOCK  plaziert  werden. Da jedoch der
+  Roboter  unbedingt  ber  seinen  Schutzschild- bzw. Viren-Status informiert
+  werden   muá,   sind   2   neue   Befehle   aufgenommen  worden,  die  diese
+  Status-Werte in ein Register schreiben.
+
+  3. SETDIR
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    Aus  Geschwindigkeitsgrnden  wird  nicht  bei  jeder RS- / RA-Ver„nderung
+  die  Richtung  bzw.  die  Geschwindigkeit  des Roboters ge„ndert. Dazu dient
+  dieser Befehl. Er berechnet die INC-Faktoren nach den Formeln:
+                            INCX = COS ( RA ) DIV RS
+                            INCY = SIN ( RA ) DIV RS
+
+  4. SCANR / SCANV
+ ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+    Eine  der  komplexesten  Prozeduren  ist  SCAN. Es scannt das Spielfeld in
+  dem  in  <EA>  stehenden  Winkel  ab  und  schreibt  die  Anzahl  gefundener
+  Roboter/Viren  und  X  /  Y, also die X- und Y-Entfernung des ihm n„chsten
+  Roboters/Virus,  in  die  3  ihm bergebenen Register. Da jedes Register nur
+  8-Bit-Werte  aufnehmen  kann,  darf  der Scanner maximal 127 Pixel entfernte
+  Objekte erkennen ( X/Y: -128 bis +127 ).
+  Die Routine arbeitet folgendermaáen:
+  In  einer  Schleife  werden  s„mtliche Roboter bzw. Viren berprft: Es wird
+  zuerst  die  Entfernung  zum  Objekt berechnet. Ist der Betrag von X und Y
+  < 127,  ist  es  im  sichtbaren  Bereich.  An  dieser  Stelle  máte man den
+  ArcTan  von  (  Y  DIV  X ) berechnen, ihn in øR umwandeln und dann mit EA
+  vergleichen.  Dies  ist  aber  viel  zu  langsam.  Daher  haben wir uns eine
+  erheblich schnellere M”glichkeit ausgedacht:
+  Man  erstellt  eine  Tangens-Tabelle  mit  128  vorberechneten Eintr„gen, da
+  sie  identisch  mit  den  restlichen  128 Eintr„gen sind. Wenn man auf diese
+  Tabelle zugreift, muá Bit 8 des Winkels einfach gel”scht werden:
+     AND BL, 127
+  Doch  gerade  die  Tatsache,  daá  die  TAN-Werte  zweier  Winkel  identisch
+  sind, ist ein Problem:
+         -Y     +Y           +Y     -Y
+        ÄÄÄÄ = ÄÄÄÄ   bzw.  ÄÄÄÄ = ÄÄÄÄ
+         -X     +X           -X     +X
+  Daher  muá  zus„tzlich  eine  šberprfung  eingebaut  werden: Ist der Winkel
+  >127,  MUSS  Y  negativ  sein,  ist  er  jedoch  kleiner  als  127, MUSS Y
+  positiv  sein  (  siehe  Anhang  2  ),  ansonsten  liegt das Objekt nicht in
+  diesem Winkel zu dem Scanner.
+  Nun  vergleicht  man  den  Quotienten  von  (  Y/X ) mit dem tats„chlichen
+  Tan(EA).  Hier  liegt  das n„chste Problem. Man muá mit Toleranzen arbeiten,
+  da  nicht  alle  Quotienten  exakt den Tan(EA) ergeben. Diese Toleranz-Werte
+  sind  wie  die  Tan-Werte  selbst  nicht  linear, d.h. man muá bei Objekten,
+  deren  X  sehr  klein  und  die  Quotienten  daher  sehr  groá  sind, groáe
+  Toleranz-Werte  w„hlen,  damit  keine  Roboter  in  einem "toten Winkel" zum
+  Scanner stehen, also nicht erfaát werden.
+  Wir   haben   dazu  eine  zweite  Tabelle  angelegt,  die  nach  der  Formel
+  berechnet wird:
+
+            TOLERANZ[X] = ABS( TAN(W+1) - TAN(W) ) DIV 2
+
+  Diese   Toleranz   muá   man  sich  aber  als  Wert  ZWISCHEN  zwei  Winkeln
+  vorstellen.  Wenn  ein  Quotient  also  gr”áer  ist  als  Tan(EA),  kann man
+  TOLERANZ[EA]  benutzen,  da  man ja die Toleranz zwischen EA und EA+1 sucht.
+  Ist   der  Quotient  jedoch  kleiner  als  Tan(EA),  muá  der  Toleranz-Wert
+  zwischen   EA   und   EA-1  benutzt  werden,  also  muá  man  TOLERANZ[EA-1]
+  verwenden.
+  Liegt  der  Quotient  also  innerhalb  des Toleranzbereichs, hat der Scanner
+  ein  Objekt  gefunden,  kann  also  die  Anzahl  der gefundenen Objekte um 1
+  erh”hen.
+  Nun   muá   noch   festgestellt   werden,  ob  dieses  Objekt  das  momentan
+  n„chstliegende  ist.  Dazu  berechnet  man  die  tats„chliche Entfernung des
+  Objekt nach der Formel:
+                                Y
+                   A = ABS( ÄÄÄÄÄÄÄÄÄÄÄ )
+                              SIN(EA)
+
+  Dieser  Wert  wird  mit  einer Variablen [Nearest] verglichen, die zu Anfang
+  des  Scan-Vorgangs  auf  127  gesetzt worden ist. Ist er kleiner, k”nnen die
+  X/Y-Werte  des  Objekts  in  das 2. und 3. bergebene Register eingetragen
+  und [Nearest] auf die Entfernung dieses Objektes gesetzt werden.
+
+  Es  gibt  aber  4  Winkel,  bei  denen  der  Quotient 0 bzw. nicht definiert
+  ist:  0ø,  64ø,  128ø  und  192ø.  Fr  diese  Winkel  haben wir eine eigene
+  šberprfung geschrieben, die direkt X/Y mit dem Winkel vergleicht.
+
+  Diese Prozedur wiederholt sich fr alle X Roboter bzw. alle
+               X * 16 Viren - [inaktive Viren] - [Antik”rper].
+  Antik”rper werden von keinem Scanner erfaát.
+
+              4. Mutationen
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+  Mutationen sind der Kern von R-Evolution. Es gibt 3 Arten von Mutationen:
+             - Hinzufgen von Befehlen
+             - Entfernen von Befehlen
+             - Manipulation von Befehlen
+  Mutationen   erfolgen   in   einem   einstellbaren   Zeitabstand.   Es   muá
+  gew„hrleistet  sein,  daá  noch  gengend  Roboter  vorhanden  sind, die die
+  besch„digten  Roboter  besiegen.  Dennoch  mssen  Mutationen relativ h„ufig
+  auftreten,  denn  die  Wahrscheinlichkeit,  einen DNA-Code zu verbessern ist
+  viel  geringer  als  die, einen Code zu besch„digen. Zudem ist nicht sicher,
+  ob sich der verbesserte Code auf Anhieb durchsetzen werden kann.
+
+    Mutationen   werden   in   R-Evolution  leider  noch  nicht  ordnungsgem„á
+  durchgefhrt,   denn   man  muá  neben  den  oben  genannten  "Regeln"  auch
+  beachten,  daá  verschiedene  Befehle  verschieden h„ufig auftreten sollten,
+  um   eine  optimale  und  schnelle  Mutation  zu  erm”glichen:  SCAN-Befehle
+  sollten z.B. nicht so oft vorkommen wie MOVs...
+
+          5. Testergebnisse
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+    Da  die  Mutationen  noch  nicht  richtig  ausgefhrt  werden,  k”nnen wir
+  hier  leider  noch  keine  Beispiele  zu  der  Entwicklung  eines  DNA-Codes
+  nennen.
+
+    6. Literaturverzeichnis
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+    Die  Idee  zu  R-Evolution  lieferte uns P-ROBOTS, ein Shareware-Programm,
+  bei   dem   man   eigene  PASCAL-Programme  zur  Steuerung  seines  Roboters
+  schreiben   kann  und  diesen  dann  gegen  eine  Anzahl  mit  dem  Programm
+  mitgelieferter  Robot-Codes  antreten  lassen  kann. Die Roboter in P-ROBOTS
+  haben  einen  Scanner  und  eine  Kanone,  mit  der  sie  versuchen,  andere
+  Roboter  zu  vernichten.  DNA-Copy,  Mutationen  und  Antik”rper  gibt es in
+  P-ROBOTS  nicht.  Die  ganze  Ausarbeitung  der  Befehle,  L”sungswege  etc.
+  stammt von uns.
+
+                  7. Schluá
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+    R-Evolution   war   fr   uns  sowohl  aus  programmtechnischer  als  auch
+  mathematischer  Sicht  eine  Herausforderung.  R-Evolution war KEIN Versuch,
+  knstliches  Leben  zu  erforschen,  da  wir  berzeugt  sind,  daá dies ein
+  hoffnungsloses  Unterfangen  ist  und  auch  bleiben  wird. Dazu muá man nur
+  die   ganze   Rechenpower   des   Pentium   mit   dem  Gehirn  einer  Ameise
+  vergleichen,  um  einzusehen,  daá  sich  wirkliches  Leben  in  einer  ganz
+  anderen, der Technik unzug„nglichen Dimension abspielt.
+
+
+                  Anhang 1.
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+   Liste der Befehle und ihrer Opcodes.     ( * = Siehe <3. Der Interpreter> )
+  ÚÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÂÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
+  ³1.Byte ³  Befehl          ³  Erkl„rung                                    ³
+  ³       ³                  ³                                               ³
+  ³  00h  ³ NOP              ³ Keine Aktion                                  ³
+  ³       ³                  ³                                               ³
+  ³  01h  ³ FIREV Const      ³ Feuere Virus mit SPEED=<Const> ab           * ³
+  ³  02h  ³ FIREV Reg        ³ Feuere Virus mit SPEED=<Reg> ab             * ³
+  ³  03h  ³ FIREA Const      ³ Feuere Antik”rper mit SPEED=<Const> ab.     * ³
+  ³  04h  ³ FIREA Reg        ³ Feuere Antik”rper mit SPEED=<Reg> ab.       * ³
+  ³  05h  ³ GETSV Reg        ³ Viren-Status in <Reg> speichern             * ³
+  ³  06h  ³ GETSD Reg        ³ Denfense-Status in Reg speichern            * ³
+  ³  07h  ³ SETDIR           ³ Neue Winkel und Geschwindigkeit des Robots    ³
+  ³       ³                  ³ setzen ( RA+RS )                            * ³
+  ³       ³                  ³                                               ³
+  ³  1xh  ³ MOV Reg,Const8   ³ <Const8> in <Reg> speichern                   ³
+  ³  2xh  ³ ADD Reg,Const8   ³ <Const8> zu <Reg> addieren                  * ³
+  ³  3xh  ³ SUB Reg,Const8   ³ <Const8> von <Reg> subtrahieren             * ³
+  ³  4xh  ³ AND Reg,Const8   ³ <Reg> mit <Const8> AND-verknpfen             ³
+  ³  5xh  ³ OR Reg,Const8    ³ <Reg> mit <Const8> OR-verknpfen              ³
+  ³  6xh  ³ XOR Reg,Const8   ³ <Reg> mit Const8 XOR-verknpfen               ³
+  ³  7xh  ³ TEST Reg,Const8  ³ <Reg> mit <Const8> nach OR-Verknpfung testen ³
+  ³  8xh  ³ CMP Reg,Const8   ³ <Reg> mit <Const8> vergleichen                ³
+  ³       ³                  ³                                               ³
+  ³  90h  ³ MOV Reg1,Reg2    ³ <Reg2> in <Reg1> speichern                    ³
+  ³  91h  ³ ADD Reg1,Reg2    ³ <Reg2> zu <Reg1> addieren                     ³
+  ³  92h  ³ SUB Reg1,Reg2    ³ <Reg2> von <Reg1> subtrahieren                ³
+  ³  93h  ³ XCHG Reg1,Reg2   ³ <Reg1> mit <Reg2> vertauschen                 ³
+  ³  94h  ³ INC Reg          ³ <Reg> inkrementieren                          ³
+  ³  95h  ³ DEC Reg          ³ <Reg> dekrementieren                          ³
+  ³  96h  ³ SHL Reg,Const4   ³ <Reg> um Const4 Bits nach links shiften       ³
+  ³  97h  ³ SHR Reg,Const4   ³ <Reg> um Const4 Bits nach rechts shiften      ³
+  ³  98h  ³ ROL Reg,Const4   ³ <Reg> um Const4 Bits nach links rotieren      ³
+  ³  99h  ³ ROR Reg,Const4   ³ <Reg> um Const4 Bits nach rechts rotieren     ³
+  ³  9Ah  ³ NEG Reg          ³ <Reg> negieren                                ³
+  ³  9Bh  ³ AND Reg1,Reg2    ³ <Reg1> mit <Reg2> AND-verknpfen              ³
+  ³  9Ch  ³ OR  Reg1,Reg2    ³ <Reg1> mit <Reg2> OR-verknpfen               ³
+  ³  9Dh  ³ XOR Reg1,Reg2    ³ <Reg1> mit <Reg2> XOR-verknpfen              ³
+  ³  9Eh  ³ TEST Reg1,Reg2   ³ <Reg1> mit <Reg2> nach OR-Verknpfung testen  ³
+  ³  9Fh  ³ CMP Reg1,Reg2    ³ <Reg1> mit <Reg2> vergleichen                 ³
+  ³       ³                  ³                                               ³
+  ³  Axh  ³ SCANR RG1,RG2,RG3³ RG1:Anzahl, RG2:X, RG3:Y                  * ³
+  ³  Bxh  ³ SCANM RG1,RG2,RG3³ RG1:Anzahl, RG2:X, RG3:Y                  * ³
+  ³       ³                  ³                                               ³
+  ³  Cxh  ³ NOP              ³ Keine Aktion                                  ³
+  ³  Dxh  ³ NOP              ³ Keine Aktion                                  ³
+  ³  Exh  ³ NOP              ³ Keine Aktion                                  ³
+  ³       ³                  ³                                               ³
+  ³  F0h  ³ JMP Const8       ³ JMP zu Befehl <Const8>                        ³
+  ³  F1h  ³ JZ/JE   Const8,  ³ JMP zu Befehl <Const8> wenn ZF=1              ³
+  ³  F2h  ³ JNZ/JNE Const8,  ³ JMP zu Befehl <Const8> wenn ZF=0              ³
+  ³  F3h  ³ JA/JNBE Const8,  ³ JMP zu Befehl <Const8> wenn CF=0 und ZF=0     ³
+  ³  F4h  ³ JB/JNAE Const8,  ³ JMP zu Befehl <Const8> wenn CF=1              ³
+  ³  F5h  ³ JAE/JNB Const8,  ³ JMP zu Befehl <Const8> wenn CF=0              ³
+  ³  F6h  ³ JBE/JNA Const8,  ³ JMP zu Befehl <Const8> wenn CF=1 oder ZF=1    ³
+  ÀÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+    Jeder Befehl besteht aus 2 Byte.
+    Das 2. Byte besteht aus einer Konstanten Const8 von 0-255
+                   oder aus einem Register und einer Konstanten von 0-16
+                   oder aus 2 Registern
+    In  einem  Befehl,  dessen 1.Byte die Form <1xh> hat, ist in die unteren
+    4 Bits des 1.Befehlsbytes ein Register 0-15 eingetragen.
+
+
+                  Anhang 2.
+ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
+
+  Graphik zu SCAN ( 3. Der Interpreter )
+
+

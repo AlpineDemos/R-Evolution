@@ -1,0 +1,10 @@
+
+ Start  Stop   Length Name               Class
+
+ 00000H 03865H 03866H CODE               
+ 03870H 05AB3H 02244H IDATA              
+ 05AC0H 0ACD5H 05216H UDATA              
+ 0ACE0H 12CDFH 08000H SSEG               
+
+Program entry point at 0000:3813
+

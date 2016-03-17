@@ -1,0 +1,34 @@
+a:	sub	ea,16		;begin scanning
+b:	scanr	r1,r2,r3
+	nop
+	nop
+	inc	ea
+	cmp	r1,0
+	jz	b
+	nop
+	nop
+	nop
+	mov	ca,ea
+	nop
+	nop
+	nop
+	nop
+	nop
+	firev	1
+	mov	ra,ea
+	nop
+	mov	rs,128
+	setdir
+	nop
+	nop
+	nop
+	nop
+	nop
+c:	getsv	r4
+	cmp	r4,0
+	nop
+	nop
+	nop
+	nop
+	jz	c
+        jmp     a
